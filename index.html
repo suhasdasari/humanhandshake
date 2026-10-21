@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Handshake — prove a known human is on the call</title>
+<meta name="description" content="Serverless, account-free call verification: rotating codes, challenge-response and signed 'verified human' tokens from a pre-shared device key.">
+<link rel="stylesheet" href="style.css"></head><body>
+<header><h1>🤝 Handshake</h1><p class="tag">Check that the person on this call holds the key you swapped with them in person. Everything runs in your browser: no accounts, no server.</p>
+<div id="me" class="me"></div></header>
+<nav><button data-t="pair" class="on">1 · Pair</button><button data-t="call">2 · Live call check</button><button data-t="token">3 · Signed token</button><button data-t="model">Threat model</button></nav>
+<main>
+<section id="pair">
+ <h2>Your device identity</h2>
+ <p>An ECDSA P-256 key is created on this device. It is stored as <b>non-extractable</b>, so page scripts can use it but can never read or export it.</p>
+ <label>Your display name <input id="myName" placeholder="e.g. Alice (CFO)"></label>
+ <div class="row"><button id="saveName">Save name</button><button id="regPasskey">Bind a passkey (WebAuthn)</button></div>
+ <p id="pkStatus" class="muted"></p>
+ <h2>Pair with someone (do this once, in person or over a channel you already trust)</h2>
+ <ol><li><b>A</b> taps <i>Create pairing code</i> and gives it to B (by QR photo, AirDrop or Signal, or by reading it out in person).</li>
+ <li><b>B</b> pastes it under <i>Import</i>, then sends back the reply code that appears.</li><li><b>A</b> imports B's reply. Now both devices share a secret and each knows the other's public key.</li></ol>
+ <div class="row"><button id="mkPair">Create pairing code</button></div>
+ <textarea id="pairOut" readonly placeholder="Your pairing / reply code appears here"></textarea>
+ <label>Import code from the other person<textarea id="pairIn"></textarea></label><button id="importPair">Import</button>
+ <p id="pairMsg" class="msg"></p>
+ <h3>Paired contacts</h3><ul id="contacts"></ul>
+</section>
+<section id="call" hidden>
+ <label>Who are you on a call with? <select id="callContact"></select></label>
+ <div class="grid">
+ <div class="card"><h3>Your code: read it out</h3><div id="myCode" class="code">——————</div><div class="bar"><i id="bar"></i></div>
+ <p class="muted">This code is tied to <b>your</b> key and changes every 30 s, so the other side's code is different. Someone replaying your code back to you gets rejected.</p></div>
+ <div class="card"><h3>Check their code</h3><input id="peerCode" inputmode="numeric" maxlength="6" placeholder="6 digits"><button id="checkCode">Verify</button><p id="codeRes" class="msg"></p></div>
+ </div>
+ <div class="grid">
+ <div class="card"><h3>Challenge them (stronger)</h3><p class="muted">Send a fresh random challenge. Only the device holding the shared secret can answer it.</p>
+ <button id="newChal">New challenge</button><div id="chal" class="code sm"></div>
+ <input id="chalResp" placeholder="their 6-digit response"><button id="checkResp">Verify response</button><p id="respRes" class="msg"></p></div>
+ <div class="card"><h3>Answer their challenge</h3><input id="theirChal" placeholder="challenge they gave you"><button id="answer">Compute response</button><div id="myResp" class="code sm"></div></div>
+ </div>
+</section>
+<section id="token" hidden>
+ <h2>Create a "verified human" token</h2>
+ <p>This signs a short statement (for example "Yes, I approved wire #4411") with your device key and, if you bound one, a passkey with user verification (Face ID, fingerprint or PIN). Paste the token into Slack, email or SMS.</p>
+ <label>Statement<input id="stmt" value="It's really me. I approve this request."></label>
+ <label>Valid for <select id="ttl"><option value="600">10 minutes</option><option value="3600">1 hour</option><option value="86400">1 day</option></select></label>
+ <button id="sign">Sign token</button><textarea id="tokOut" readonly></textarea><button id="copyTok">Copy</button>
+ <h2>Verify a token</h2><textarea id="tokIn" placeholder="HHT1.…"></textarea><button id="verifyTok">Verify</button><div id="tokRes" class="msg"></div>
+</section>
+<section id="model" hidden>
+ <h2>Honest threat model</h2>
+ <p class="warn"><b>Handshake does not detect deepfakes.</b> It does not analyse audio or video at all. It answers one narrower question: <i>is the other side holding the key you exchanged with this person earlier?</i></p>
+ <h3>It helps against</h3><ul>
+ <li>A cloned voice or face of your CFO or colleague calling from a new account or number. The impostor doesn't have the device key, so they can't produce the code or answer a challenge.</li>
+ <li>Forged approvals in chat: a token from an unpaired key, or one that has been edited or has expired, fails.</li>
+ <li>Simple replay: codes are tied to one direction and expire after about 30 s; challenges are random.</li></ul>
+ <h3>It does NOT help against</h3><ul>
+ <li><b>A compromised or stolen unlocked device</b>, malware, or a real person who is coerced or colluding. Handshake proves who holds the key, not who that human is or what they intend.</li>
+ <li><b>Live relay</b>: an attacker who can talk to the real person at the same moment could ask them for a fresh code and pass it on. Use challenge-response and say <i>why</i> you're asking. Codes are short (6 digits, about 20 bits), so treat them as one signal among several.</li>
+ <li><b>A bad pairing</b>: if the first exchange was intercepted, everything after it is meaningless. Pair in person or over a channel you already trust.</li>
+ <li>Secrets live in this browser's storage. If you clear site data, they're gone, and there's no recovery or sync.</li>
+ <li>Passkey checks show that a user-verifying authenticator approved the token. Without attestation, they don't prove which hardware it was.</li></ul>
+ <h3>Privacy</h3><p>No server, no accounts, no analytics, no biometrics leave your device. Tokens include your chosen display name, the public key, the statement and timestamps, and nothing else.</p>
+</section>
+</main>
+<footer>Built by Satoshi Drops 🪂 <a href="https://x.com/SatoshiDropsHQ" target="_blank" rel="noopener">@SatoshiDropsHQ</a></footer>
+<script src="crypto.js"></script><script src="app.js"></script></body></html>
